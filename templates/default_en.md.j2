@@ -1,0 +1,21 @@
+{{ title }}
+Branch: {{ branch }}
+Commit: [describe in English]
+
+AI Instructions:
+- Fill in only the "Changes made" and "Testing process" fields below.
+- Keep exactly the structure of this document.
+- Do not include the diff blocks in the final response.
+
+{% for file in files -%}
+- {{ file.path }}:
+    - Changes made: [To be filled by AI]
+
+    Diff analysed:
+    ```diff
+{{ file.diff | indent(4, first=True) }}
+    ```
+
+{% endfor -%}
+Testing process:
+- [To be filled by AI]

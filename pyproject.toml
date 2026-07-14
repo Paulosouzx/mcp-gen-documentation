@@ -1,0 +1,33 @@
+[project]
+name = "generate-documentation-mcp"
+version = "0.1.0"
+description = "MCP server that turns Git changes into structured Markdown documentation skeletons for Claude Code to fill in."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "mcp[cli]>=1.2.0",
+    "jinja2>=3.1.0",
+]
+
+[project.scripts]
+gendoc-mcp = "cli.main:main"
+gendoc-mcp-server = "mcp_server.server:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["core*", "cli*", "mcp_server*", "templates*"]
+
+[tool.setuptools.package-data]
+templates = ["*.j2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

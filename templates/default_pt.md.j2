@@ -1,0 +1,21 @@
+{{ title }}
+Branch: {{ branch }}
+Commit: [descrever em português]
+
+Instruções para a IA:
+- Preenche apenas os campos "Alterações feitas" e "Processo de testes" abaixo.
+- Mantém exatamente a estrutura deste documento.
+- Não incluas os blocos de diff na resposta final.
+
+{% for file in files -%}
+- {{ file.path }}:
+    - Alterações feitas: [A preencher pela IA]
+
+    Diff analisado:
+    ```diff
+{{ file.diff | indent(4, first=True) }}
+    ```
+
+{% endfor -%}
+Processo de testes:
+- [A preencher pela IA]
