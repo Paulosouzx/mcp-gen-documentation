@@ -1,8 +1,9 @@
 # Generate-documentation-MCP
 
-MCP server for Claude Code that turns a Git repository's uncommitted changes
-into a structured Markdown documentation skeleton — diffs, file list and
-placeholders — ready for Claude Code to fill in with the actual analysis.
+MCP server for Claude Code that turns a Git repository's changes — uncommitted,
+a single commit, or a whole branch — into a structured Markdown documentation
+skeleton — diffs, file list and placeholders — ready for Claude Code to fill
+in with the actual analysis.
 
 This is a **standalone product**, not an evolution of
 [Generate-documentation-IA](https://github.com/Paulosouzx/Generate-documentation-IA).
@@ -32,6 +33,18 @@ templates/     Jinja2 skeleton templates (default_en.md.j2, default_pt.md.j2)
 tests/         pytest suite (uses real throwaway Git repos via subprocess)
 ```
 
+All Git commands live in `core/git_diff.py` — nothing else in the project
+shells out to `git`. It exposes one function per diff source:
+
+- `get_working_tree_diff(project_path)` — staged + unstaged uncommitted changes
+- `get_commit_diff(project_path, commit_hash)` — a single commit (defaults to `HEAD`)
+- `get_branch_diff(project_path, base_branch)` — current branch vs `base_branch...HEAD`
+
+All three return the same `list[ChangedFile]` shape, so
+`core/generator.py` and the Markdown template never know which mode produced
+the diff — only `mode` picks which function runs; everything downstream
+(filtering, rendering, writing) is identical for every mode.
+
 > Note: the MCP-facing package is named `mcp_server/`, not `mcp/`, because
 > `mcp` is the name of the official MCP SDK this project depends on — a
 > top-level `mcp/` package in this repo would shadow it on import.
@@ -49,6 +62,12 @@ Parameters:
 | `language`     | `"en"`\|`"pt"` | `"en"`         | Skeleton language                                      |
 | `title`        | string       | language default | Document title                                        |
 | `template`     | string       | `"default"`      | Template name, resolved as `templates/{template}_{language}.md.j2` |
+| `mode`         | `"working_tree"`\|`"commit"`\|`"branch"` | `"working_tree"` | Diff source |
+| `commit_hash`  | string \| null | `null` (= `HEAD`) | Commit to document, used when `mode="commit"` |
+| `base_branch`  | string       | `"origin/main"`  | Base branch to diff against, used when `mode="branch"` (`base_branch...HEAD`) |
+
+Calling the tool with no arguments beyond `project_path` keeps documenting
+uncommitted changes exactly as before — `mode` defaults to `"working_tree"`.
 
 Returns:
 
@@ -101,18 +120,46 @@ or run `/mcp` inside a Claude Code session.
 
 ### Using it
 
-Inside any Git repository, in Claude Code:
+Inside any Git repository, in Claude Code, describe what you want in plain
+language — Claude Code translates it into tool parameters, the server writes
+`documentation.md` with the diffs and placeholders, and Claude Code then
+edits that file in place to fill in the actual analysis.
+
+**Document local (uncommitted) changes**
 
 > "Document the changes on this branch, ignoring CSS files, in Portuguese."
-
-Claude Code interprets that and calls the tool with something like:
 
 ```json
 {"exclude": ["*.css"], "language": "pt"}
 ```
 
-The MCP server writes `documentation.md` with the diffs and placeholders;
-Claude Code then edits that file in place to fill in the actual analysis.
+(`mode` omitted — defaults to `"working_tree"`.)
+
+**Document a specific commit**
+
+> "Document what changed in commit a1b2c3d."
+
+```json
+{"mode": "commit", "commit_hash": "a1b2c3d"}
+```
+
+> "Document the last commit."
+
+```json
+{"mode": "commit"}
+```
+
+(`commit_hash` omitted — defaults to `HEAD`.)
+
+**Document a whole branch**
+
+> "Document everything this branch adds compared to origin/develop."
+
+```json
+{"mode": "branch", "base_branch": "origin/develop"}
+```
+
+(`base_branch` omitted — defaults to `"origin/main"`.)
 
 ## Development
 
@@ -124,7 +171,15 @@ pytest
 CLI usage (no Claude Code needed), useful for manual testing:
 
 ```bash
-gendoc-mcp --project-path . --exclude "*.css" --language pt
+# Uncommitted changes (default mode)
+gendoc-mcp
+gendoc-mcp --mode working_tree --exclude "*.css" --language pt
+
+# A specific commit (defaults to HEAD if --commit omitted)
+gendoc-mcp --mode commit --commit a1b2c3d
+
+# Current branch vs a base branch (defaults to origin/main)
+gendoc-mcp --mode branch --base origin/develop
 ```
 
 ## Adding a new tool

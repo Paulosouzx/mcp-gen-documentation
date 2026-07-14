@@ -36,7 +36,7 @@ def get_current_branch(project_path: str) -> str:
         return "HEAD"
 
 
-def get_changed_files(project_path: str) -> list[ChangedFile]:
+def get_working_tree_diff(project_path: str) -> list[ChangedFile]:
     """Return uncommitted changes (staged + unstaged), staged diff taking
     priority for files present in both sets — mirrors the original gendoc
     shell script's behavior."""
@@ -56,6 +56,51 @@ def get_changed_files(project_path: str) -> list[ChangedFile]:
         diff_args = ["diff", "--cached", "--", path] if staged else ["diff", "--", path]
         diff_text = _run_git(project_path, *diff_args)
         changed.append(ChangedFile(path=path, staged=staged, diff=diff_text))
+
+    return changed
+
+
+def get_commit_diff(project_path: str, commit_hash: str | None = None) -> list[ChangedFile]:
+    """Return the changes introduced by a single commit (defaults to HEAD)."""
+    if not is_git_repo(project_path):
+        raise GitError(f"'{project_path}' is not a Git repository")
+
+    commit = commit_hash or "HEAD"
+    names = [
+        line
+        for line in _run_git(
+            project_path, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root", commit
+        ).splitlines()
+        if line
+    ]
+
+    changed: list[ChangedFile] = []
+    for path in sorted(names):
+        diff_text = _run_git(
+            project_path, "diff-tree", "-p", "--no-commit-id", "-r", "--root", commit, "--", path
+        )
+        changed.append(ChangedFile(path=path, staged=False, diff=diff_text))
+
+    return changed
+
+
+def get_branch_diff(project_path: str, base_branch: str = "origin/main") -> list[ChangedFile]:
+    """Return the changes on the current branch relative to base_branch's
+    merge-base (three-dot diff)."""
+    if not is_git_repo(project_path):
+        raise GitError(f"'{project_path}' is not a Git repository")
+
+    diff_range = f"{base_branch}...HEAD"
+    names = [
+        line
+        for line in _run_git(project_path, "diff", "--name-only", diff_range).splitlines()
+        if line
+    ]
+
+    changed: list[ChangedFile] = []
+    for path in sorted(names):
+        diff_text = _run_git(project_path, "diff", diff_range, "--", path)
+        changed.append(ChangedFile(path=path, staged=False, diff=diff_text))
 
     return changed
 

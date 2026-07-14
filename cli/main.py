@@ -20,6 +20,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--language", default="en", choices=["en", "pt"], help="Skeleton language")
     parser.add_argument("--title", default=None, help="Document title")
     parser.add_argument("--template", default="default", help="Template name (see templates/)")
+    parser.add_argument(
+        "--mode",
+        default="working_tree",
+        choices=["working_tree", "commit", "branch"],
+        help="What to diff: uncommitted changes, a single commit, or a branch vs a base branch",
+    )
+    parser.add_argument("--commit", dest="commit_hash", default=None, help="Commit hash for --mode commit (default: HEAD)")
+    parser.add_argument("--base", dest="base_branch", default="origin/main", help="Base branch for --mode branch")
     return parser
 
 
@@ -34,6 +42,9 @@ def main(argv: list[str] | None = None) -> int:
         language=args.language,
         title=args.title,
         template=args.template,
+        mode=args.mode,
+        commit_hash=args.commit_hash,
+        base_branch=args.base_branch,
     )
 
     print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))

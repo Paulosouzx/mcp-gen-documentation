@@ -3,6 +3,7 @@ every tool call delegates straight to core.generator.
 """
 
 import os
+from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
 
@@ -11,9 +12,11 @@ from core import generator as core_generator
 mcp = FastMCP(
     name="generate-documentation-mcp",
     instructions=(
-        "Turns a Git repository's uncommitted changes into a structured Markdown "
-        "documentation skeleton (diffs + placeholders). The caller is expected to "
-        "fill in the analysis/prose afterwards by editing the generated file."
+        "Turns a Git repository's changes into a structured Markdown "
+        "documentation skeleton (diffs + placeholders). Supports uncommitted "
+        "changes, a single commit, or a branch vs a base branch as the diff "
+        "source. The caller is expected to fill in the analysis/prose "
+        "afterwards by editing the generated file."
     ),
 )
 
@@ -27,8 +30,11 @@ def generate_documentation(
     language: str = "en",
     title: str | None = None,
     template: str = "default",
+    mode: Literal["working_tree", "commit", "branch"] = "working_tree",
+    commit_hash: str | None = None,
+    base_branch: str = "origin/main",
 ) -> dict:
-    """Generate a Markdown documentation skeleton from the current Git changes.
+    """Generate a Markdown documentation skeleton from Git changes.
 
     Args:
         project_path: Path to the Git repository. Defaults to the server's
@@ -42,6 +48,12 @@ def generate_documentation(
         language: Skeleton language, "en" or "pt".
         title: Document title. Defaults to a language-appropriate title.
         template: Template name to render (see templates/ directory).
+        mode: Diff source — "working_tree" (uncommitted changes, default),
+            "commit" (a single commit), or "branch" (current branch vs
+            base_branch).
+        commit_hash: Commit to document when mode="commit". Defaults to HEAD.
+        base_branch: Base branch to diff against when mode="branch"
+            (uses base_branch...HEAD). Defaults to "origin/main".
 
     Returns:
         {"success": bool, "output_file": str | None, "files_processed": int,
@@ -55,6 +67,9 @@ def generate_documentation(
         language=language,
         title=title,
         template=template,
+        mode=mode,
+        commit_hash=commit_hash,
+        base_branch=base_branch,
     )
     return result.to_dict()
 
