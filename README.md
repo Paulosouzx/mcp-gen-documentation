@@ -161,6 +161,30 @@ edits that file in place to fill in the actual analysis.
 
 (`base_branch` omitted — defaults to `"origin/main"`.)
 
+### AI Usage section
+
+Every generated skeleton, in every mode, ends with an empty placeholder
+section:
+
+```markdown
+## AI Usage
+
+- Model:
+- Input tokens:
+- Output tokens:
+```
+
+The MCP server never fills this in — it makes no external API calls and has
+no session data to draw from. It's a placeholder for Claude Code, which (like
+the "Changes made" and "Testing process" fields) edits the file directly
+after the tool call, filling in these fields from its own current-session
+data when available and leaving them empty otherwise. Values are never
+invented, and no monetary cost is calculated.
+
+If you generate documentation from the plain `gendoc-mcp` CLI, with no LLM in
+the loop, this section stays empty — the rest of the document works exactly
+as before.
+
 ## Development
 
 ```bash
